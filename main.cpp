@@ -54,16 +54,42 @@ void approximation_algorithm(int L, vector<Lab>& labs, int T, int c, vector<Visi
             double total_score = 0.0;
 
             for (int j = 0; j < L; j++) {
-                if (labs[j].current_index >= labs[j].size) continue;
+    if (labs[j].current_index >= labs[j].size) continue;
 
-                int needed_time = labs[j].students[labs[j].current_index].p;
-                int finish_time = labs[j].current_hour + needed_time;
-                int diff = finish_time - inspection_time;
+    int needed_time = labs[j].students[labs[j].current_index].p;
+    int finish_time = labs[j].current_hour + needed_time;
+    int diff = finish_time - inspection_time;
+    double weighted_diff;
 
-                // Weighted scoring based on student workload
-                double weighted_diff = (diff < 0) ? -diff * penalty_factor : diff;
-                total_score += needed_time * weighted_diff;
+    if (diff < 0) {
+        // Compute average upcoming working hours across all labs
+        double total_next_p = 0.0;
+        int count = 0;
+
+        for (int k = 0; k < L; k++) {
+            int next_idx = labs[k].current_index + 1;
+            if (next_idx < labs[k].size) {
+                total_next_p += labs[k].students[next_idx].p;
+                count++;
             }
+        }
+
+        double avg_next_p = (count > 0) ? (total_next_p / count) : 0.0;
+
+        // Adjust the penalty based on how well the early inspection aligns
+        if (avg_next_p > 0) {
+            double misalignment = abs(diff) / avg_next_p;
+            weighted_diff = misalignment * penalty_factor;
+        } else {
+            weighted_diff = abs(diff) * penalty_factor; // fallback
+        }
+    } else {
+        weighted_diff = diff;
+    }
+
+    total_score += needed_time * weighted_diff;
+}
+
 
             inspection_scores.push_back({ inspection_time, total_score });
         }
@@ -257,7 +283,7 @@ int main() {
         int brute_force_hours = simulate_schedule(bf_times, labs, T);
 
         // Calculate ratio, protect division by zero
-        double ratio = (approx_hours == 0) ? 0.0 : double(brute_force_hours) / approx_hours;
+        double ratio = (approx_hours == 0) ? 0.0 : double(approx_hours) / brute_force_hours;
 
         // Serialize lab details as a string: LabCount:[Lab0Name-p,...];[Lab1Name-p,...];...
         std::string lab_details;
