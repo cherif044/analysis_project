@@ -22,47 +22,43 @@ struct Visit {
     int time;
 };
 void approximation_algorithm(int L, vector<Lab>& labs, int T, int c, vector<Visit>& visits) {
-    const double penalty_factor = 2.0; // Increase penalty for late inspections
+     
     int inspections = 0;
     visits.clear();
 
-    for (auto& lab : labs) {
-        lab.current_index = 0;
-        lab.current_hour = 9;
-        lab.actual_working_hours = 0;
+    for (int i=0;i<labs.size();i++) {
+        labs[i].current_index = 0;
+        labs[i].current_hour = 9;
+        labs[i].actual_working_hours = 0;
     }
 
     while (inspections < c) {
         vector<pair<int, int>> finish_times;
         bool has_students = false;
-
-        // Gather finish times of current students in all labs
         for (int i = 0; i < L; i++) {
             if (labs[i].current_index < labs[i].size) {
                 int finish_time = labs[i].current_hour + labs[i].students[labs[i].current_index].p;
-                finish_times.push_back({ finish_time, i });
+                pair<int,int>temp2;
+                temp2.first=finish_time;
+                temp2.second=i;
+                finish_times.push_back(temp2);
                 has_students = true;
             }
         }
 
         if (!has_students) break;
-
-        // Try each finish time as a possible inspection time
         vector<pair<int, double>> inspection_scores;
-        for (const auto& ft : finish_times) {
-            int inspection_time = ft.first;
+        for (int i=0;i<finish_times.size();i++) {
+            int inspection_time = finish_times[i].first;
             double total_score = 0.0;
 
             for (int j = 0; j < L; j++) {
     if (labs[j].current_index >= labs[j].size) continue;
-
     int needed_time = labs[j].students[labs[j].current_index].p;
     int finish_time = labs[j].current_hour + needed_time;
     int diff = finish_time - inspection_time;
     double weighted_diff;
-
     if (diff < 0) {
-        // Compute average upcoming working hours across all labs
         double total_next_p = 0.0;
         int count = 0;
 
@@ -73,16 +69,17 @@ void approximation_algorithm(int L, vector<Lab>& labs, int T, int c, vector<Visi
                 count++;
             }
         }
-
-        double avg_next_p = (count > 0) ? (total_next_p / count) : 0.0;
-
-        // Adjust the penalty based on how well the early inspection aligns
-        if (avg_next_p > 0) {
-            double misalignment = abs(diff) / avg_next_p;
-            weighted_diff = misalignment * penalty_factor;
-        } else {
-            weighted_diff = abs(diff) * penalty_factor; // fallback
+        double avg_next_p;
+        if(count > 0)
+        {
+            avg_next_p= (total_next_p / count);      
         }
+        else{
+             avg_next_p=0;
+        }
+         
+
+        
     } else {
         weighted_diff = diff;
     }
@@ -96,21 +93,20 @@ void approximation_algorithm(int L, vector<Lab>& labs, int T, int c, vector<Visi
 
         if (inspection_scores.empty()) break;
 
-        // Pick the inspection time with the minimum score
-        auto best_inspection = *min_element(
-            inspection_scores.begin(),
-            inspection_scores.end(),
-            [](const pair<int, double>& a, const pair<int, double>& b) {
-                return a.second < b.second;
-            });
+      int best_time = -1;
+        double best_score = INT_MAX;
+        for (int i = 0; i < inspection_scores.size(); i++) {
+            if (inspection_scores[i].second < best_score) {
+                best_score = inspection_scores[i].second;
+                best_time = inspection_scores[i].first;
+            }
+        }
 
-        int inspection_time = best_inspection.first;
+        int inspection_time = best_time;
         if (inspection_time > T + 9) break;
 
         visits.push_back({ inspection_time });
         inspections++;
-
-        // Update each lab's progress
         for (int i = 0; i < L; i++) {
             if (labs[i].current_index >= labs[i].size) continue;
 
